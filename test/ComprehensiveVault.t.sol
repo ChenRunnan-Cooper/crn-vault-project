@@ -2,16 +2,16 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/Vault.sol";
+import "../contracts/deprecated/VaultVulnerable.sol";
 
 // ================== 恶意攻击合约 (用于重入测试) ==================
 // 这个合约定义在测试文件顶部，以便测试合约可以使用它。
 contract Attacker {
-    Vault public immutable vault;
+    VaultVulnerable public immutable vault;
     uint256 public attackCount = 0;
 
     constructor(address _vaultAddress) {
-        vault = Vault(_vaultAddress);
+        vault = VaultVulnerable(_vaultAddress);
     }
 
     // 接收ETH的fallback函数，这是重入攻击的核心
@@ -35,13 +35,13 @@ contract Attacker {
 
 // ================== 全面的Vault测试套件 ==================
 contract ComprehensiveVaultTest is Test {
-    Vault public vault;
+    VaultVulnerable public vault;
     address USER_A = makeAddr("USER_A");
     address USER_B = makeAddr("USER_B");
 
     // 在每个测试用例运行前执行，确保干净的测试环境
     function setUp() public {
-        vault = new Vault();
+        vault = new VaultVulnerable();
 
         // 为测试用户预存一些ETH，否则他们无法发起需要发送value的交易
         vm.deal(USER_A, 100 ether);
@@ -120,7 +120,7 @@ contract ComprehensiveVaultTest is Test {
     function test_Event_EmitDepositMade() public {
         vm.expectEmit(true, true, false, true); // 检查所有字段
         // 明确指定事件来源的合约
-        emit Vault.DepositMade(USER_A, 1 ether);
+        emit VaultVulnerable.DepositMade(USER_A, 1 ether);
 
         vm.prank(USER_A);
         vault.deposit{value: 1 ether}();
@@ -132,7 +132,7 @@ contract ComprehensiveVaultTest is Test {
 
         vm.expectEmit(true, true, false, true);
         // 明确指定事件来源的合约
-        emit Vault.WithdrawalMade(USER_A, 1 ether);
+        emit VaultVulnerable.WithdrawalMade(USER_A, 1 ether);
         
         vm.prank(USER_A);
         vault.withdraw(1 ether);

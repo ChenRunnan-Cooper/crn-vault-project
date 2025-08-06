@@ -2,10 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/Vault.sol";
+import "../contracts/deprecated/VaultVulnerable.sol";
 
 contract VaultTest is Test {
-    Vault public vault;
+    VaultVulnerable public vault;
 
     // 为了方便测试，我们定义几个虚拟用户地址
     address USER_A = makeAddr("USER_A");
@@ -14,7 +14,7 @@ contract VaultTest is Test {
     // setUp 函数会在每个测试用例运行前被调用
     function setUp() public {
         // 创建一个新的 Vault 合约实例
-        vault = new Vault();
+        vault = new VaultVulnerable();
 
         // [FIX] 使用 vm.deal 为测试用户设置初始余额，比如 100 ETH
         // 这是解决问题的关键！
