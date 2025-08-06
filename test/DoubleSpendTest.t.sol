@@ -70,7 +70,7 @@ contract DoubleSpendTest is Test {
         assertEq(vault.balances(USER_A), 1 ether, "Initial balance should be 1 ETH");
 
         // 多次小额取款
-        for (uint i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < 10; i++) {
             vm.prank(USER_A);
             vault.withdraw(0.1 ether);
         }
@@ -96,10 +96,10 @@ contract DoubleSpendTest is Test {
         // 在同一个区块内多次取款
         vm.prank(USER_A);
         vault.withdraw(0.3 ether);
-        
+
         vm.prank(USER_A);
         vault.withdraw(0.3 ether);
-        
+
         vm.prank(USER_A);
         vault.withdraw(0.3 ether);
 
@@ -127,7 +127,7 @@ contract DoubleSpendTest is Test {
         // 两个用户分别存款
         vm.prank(USER_A);
         vault.deposit{value: 2 ether}();
-        
+
         vm.prank(USER_B);
         vault.deposit{value: 3 ether}();
 
@@ -147,7 +147,10 @@ contract DoubleSpendTest is Test {
         assertEq(address(vault).balance, 2 ether, "Contract balance should be 2 ETH");
 
         // 验证合约余额等于用户余额总和
-        assertEq(address(vault).balance, vault.balances(USER_A) + vault.balances(USER_B), 
-                "Contract balance should equal sum of user balances");
+        assertEq(
+            address(vault).balance,
+            vault.balances(USER_A) + vault.balances(USER_B),
+            "Contract balance should equal sum of user balances"
+        );
     }
-} 
+}

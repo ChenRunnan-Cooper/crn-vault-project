@@ -32,7 +32,6 @@ contract Attacker {
     }
 }
 
-
 // ================== 全面的Vault测试套件 ==================
 contract ComprehensiveVaultTest is Test {
     VaultVulnerable public vault;
@@ -49,7 +48,7 @@ contract ComprehensiveVaultTest is Test {
     }
 
     // ========= 1. 成功路径测试 (Happy Path) =========
-    
+
     function test_Success_Deposit() public {
         vm.prank(USER_A);
         vault.deposit{value: 1 ether}();
@@ -62,7 +61,7 @@ contract ComprehensiveVaultTest is Test {
         vault.deposit{value: 5 ether}();
 
         uint256 userWalletBefore = USER_A.balance;
-        
+
         vm.prank(USER_A);
         vault.withdraw(2 ether);
 
@@ -77,10 +76,9 @@ contract ComprehensiveVaultTest is Test {
 
         vm.prank(USER_A);
         vault.withdraw(5 ether);
-        
+
         assertEq(vault.balances(USER_A), 0, "User A balance in vault should be 0");
     }
-
 
     // ========= 2. 失败与回滚测试 (Sad Path / Reverts) =========
 
@@ -107,13 +105,12 @@ contract ComprehensiveVaultTest is Test {
         vm.prank(USER_A);
         vault.deposit{value: 0}();
     }
-    
+
     function test_RevertIf_WithdrawZero() public {
         vm.expectRevert("Withdraw amount must be greater than zero");
         vm.prank(USER_A);
         vault.withdraw(0);
     }
-
 
     // ========= 3. 事件触发测试 (Event Emission) =========
 
@@ -133,11 +130,10 @@ contract ComprehensiveVaultTest is Test {
         vm.expectEmit(true, true, false, true);
         // 明确指定事件来源的合约
         emit VaultVulnerable.WithdrawalMade(USER_A, 1 ether);
-        
+
         vm.prank(USER_A);
         vault.withdraw(1 ether);
     }
-
 
     // ========= 4. 多用户交互测试 =========
 
@@ -164,7 +160,6 @@ contract ComprehensiveVaultTest is Test {
         assertEq(address(vault).balance, 12 ether);
     }
 
-
     // ========= 5. 安全性测试 (Security) =========
 
     function test_Security_NoReentrancy() public {
@@ -177,10 +172,10 @@ contract ComprehensiveVaultTest is Test {
         // 启动攻击
         vm.prank(address(attacker));
         attacker.attack();
-        
+
         // 【核心断言】
         // 验证攻击结束后，状态是否正确，而不是期望它 revert。
-        
+
         // 1. 攻击者在Vault中的余额应该是 1(存) - 0.1(取) - 0.1(重入取) = 0.8 ETH
         assertEq(vault.balances(address(attacker)), 0.8 ether, "Attacker balance in vault should be 0.8 ETH");
 
@@ -188,12 +183,15 @@ contract ComprehensiveVaultTest is Test {
         assertEq(address(vault).balance, 0.8 ether, "Vault total balance should be 0.8 ETH");
 
         // 3. 攻击者合约自己的钱包余额，应该是 初始(2) - 存入(1) + 取回(0.2) = 1.2 ETH
-        assertEq(address(attacker).balance, attackerInitialWalletBalance - 1 ether + 0.2 ether, "Attacker wallet balance is incorrect");
+        assertEq(
+            address(attacker).balance,
+            attackerInitialWalletBalance - 1 ether + 0.2 ether,
+            "Attacker wallet balance is incorrect"
+        );
     }
 
-    
     // ========= 6. 模糊测试 (Fuzz Testing) =========
-    
+
     function test_Fuzz_DepositAndWithdraw(uint128 _depositAmount) public {
         // 用 vm.assume 约束随机输入，使其落在有效范围内
         vm.assume(_depositAmount > 0 && _depositAmount < 50 ether);

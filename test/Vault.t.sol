@@ -38,7 +38,7 @@ contract VaultTest is Test {
         // 准备阶段：USER_A 先存入 1 ETH
         vm.prank(USER_A);
         vault.deposit{value: 1 ether}();
-        
+
         // 测试阶段：USER_A 取出 0.5 ETH
         uint256 userA_initial_balance = USER_A.balance; // 记录 USER_A 取款前的钱包余额
         vm.prank(USER_A);
@@ -47,7 +47,9 @@ contract VaultTest is Test {
         // 断言1：检查 USER_A 在 Vault 中的余额是否减少到 0.5 ETH
         assertEq(vault.balances(USER_A), 0.5 ether, "Vault balance should be 0.5 ether");
         // 断言2：检查 USER_A 的钱包余额是否增加了 0.5 ETH
-        assertEq(USER_A.balance, userA_initial_balance + 0.5 ether, "User A wallet balance should increase by 0.5 ether");
+        assertEq(
+            USER_A.balance, userA_initial_balance + 0.5 ether, "User A wallet balance should increase by 0.5 ether"
+        );
     }
 
     // --- 失败和攻击场景测试 ---
@@ -65,12 +67,12 @@ contract VaultTest is Test {
         vm.prank(USER_A);
         vault.withdraw(2 ether);
     }
-    
+
     function test_RevertWhen_OtherUserWithdraws() public {
         // 准备：USER_A 存入 1 ETH
         vm.prank(USER_A);
         vault.deposit{value: 1 ether}();
-        
+
         // 准备：USER_B 没有任何存款
         assertEq(vault.balances(USER_B), 0);
 

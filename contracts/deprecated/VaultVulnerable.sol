@@ -8,7 +8,7 @@ pragma solidity ^0.8.20;
  * @dev 一个简单的金库合约，用于存储和提取以太币。
  * 每个用户的资金都独立记录，只有存款人本人才能提取。
  * 合约遵循 Checks-Effects-Interactions 模式以防止重入攻击。
- * 
+ *
  * ⚠️ 警告：此合约存在安全漏洞，仅用于测试对比，不要在生产环境中使用！
  */
 
@@ -25,7 +25,6 @@ contract VaultVulnerable {
      */
     event DepositMade(address indexed account, uint256 amount);
     event WithdrawalMade(address indexed account, uint256 amount);
-
 
     /**
      * @dev 存钱函数。
@@ -48,9 +47,9 @@ contract VaultVulnerable {
         // Checks-Effects-Interactions Pattern:
         // 1. Effects (Update state)
         balances[msg.sender] = userBalance - _amount;
-        
+
         // 2. Interactions (External call)
-        (bool success, ) = msg.sender.call{value: _amount}("");
+        (bool success,) = msg.sender.call{value: _amount}("");
         require(success, "Failed to send Ether");
 
         emit WithdrawalMade(msg.sender, _amount);
