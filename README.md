@@ -288,9 +288,9 @@ anvil
 #### 方法1: 使用Foundry直接部署
 
 ```bash
-# 设置环境变量
-export PRIVATE_KEY="your_private_key"
-export RPC_URL="your_rpc_url"
+# 设置环境变量（请替换为您的实际值）
+export PRIVATE_KEY="0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+export RPC_URL="https://sepolia.infura.io/v3/YOUR_PROJECT_ID"
 
 # 部署生产环境合约
 forge create contracts/production/Vault.sol:Vault --rpc-url $RPC_URL --private-key $PRIVATE_KEY
@@ -306,25 +306,74 @@ mkdir script
 forge script script/Deploy.s.sol:DeployScript --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast
 ```
 
+#### 安全提醒 ⚠️
+
+**重要安全注意事项：**
+- 🔒 **私钥安全**：示例中的私钥仅用于演示，请使用您自己的私钥
+- 🔒 **RPC URL安全**：请使用您自己的RPC端点，不要使用示例中的URL
+- 🔒 **环境变量**：建议使用 `.env` 文件存储敏感信息，并将其添加到 `.gitignore`
+- 🔒 **测试网络**：建议先在测试网络（如Sepolia、Goerli）上部署测试
+
+#### 环境变量最佳实践
+
+1. **复制环境变量示例文件**：
+```bash
+cp .env.example .env
+```
+
+2. **编辑 `.env` 文件**，填入您的实际值：
+```bash
+# .env 文件示例
+PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID
+ETHERSCAN_API_KEY=your_etherscan_api_key
+CONTRACT_ADDRESS=0x1234567890123456789012345678901234567890
+USER_ADDRESS=0xabcdefabcdefabcdefabcdefabcdefabcdefabcd
+```
+
+3. **在部署脚本中使用**：
+```bash
+# 加载环境变量
+source .env
+
+# 部署合约
+forge create contracts/production/Vault.sol:Vault --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+```
+
+**重要提醒**：
+- 🔒 `.env` 文件已添加到 `.gitignore`，不会被提交到Git
+- 🔒 `.env.example` 文件包含示例值，可以安全提交
+- 🔒 请确保 `.env` 文件中的私钥安全存储
+
 ### 与合约交互
 
 使用 Cast 工具与合约交互：
 
 ```bash
+# 设置环境变量
+export CONTRACT_ADDRESS="0x1234567890123456789012345678901234567890"
+export USER_ADDRESS="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+
 # 调用存款函数
-cast send <contract_address> "deposit()" --value 1ether --private-key <your_private_key>
+cast send $CONTRACT_ADDRESS "deposit()" --value 1ether --private-key $PRIVATE_KEY
 
 # 调用取款函数
-cast send <contract_address> "withdraw(uint256)" 0.5ether --private-key <your_private_key>
+cast send $CONTRACT_ADDRESS "withdraw(uint256)" 0.5ether --private-key $PRIVATE_KEY
 
 # 查询用户余额
-cast call <contract_address> "balances(address)" <user_address>
+cast call $CONTRACT_ADDRESS "balances(address)" $USER_ADDRESS
 
 # 查询合约配置
-cast call <contract_address> "MAX_WITHDRAWAL_GAS()"
-cast call <contract_address> "MAX_CONTRACT_SIZE()"
-cast call <contract_address> "MAX_RETURN_DATA_SIZE()"
+cast call $CONTRACT_ADDRESS "MAX_WITHDRAWAL_GAS()"
+cast call $CONTRACT_ADDRESS "MAX_CONTRACT_SIZE()"
+cast call $CONTRACT_ADDRESS "MAX_RETURN_DATA_SIZE()"
 ```
+
+#### 安全提醒 ⚠️
+
+- 🔒 **合约地址**：请使用实际部署的合约地址
+- 🔒 **用户地址**：请使用实际的用户地址
+- 🔒 **私钥安全**：确保私钥安全存储，不要暴露在代码中
 
 ## 安全审计报告
 
