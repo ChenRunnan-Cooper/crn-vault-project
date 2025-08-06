@@ -4,3 +4,7 @@ out = "out"
 libs = ["lib"]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+
+# Dependencies
+[profile.default.dependencies]
+forge-std = { git = "https://github.com/foundry-rs/forge-std", version = "1.9.5" }
