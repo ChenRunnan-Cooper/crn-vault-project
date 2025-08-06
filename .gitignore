@@ -1,0 +1,24 @@
+# Foundry
+# ===================
+# 编译输出和缓存
+cache/
+out/
+
+# 广播交易日志和报告
+broadcast/
+reports/
+
+# 本地依赖库
+# 通常我们只提交 `foundry.toml` 和 `remappings.txt`，
+# 其他人通过 `forge install` 来安装依赖。
+lib/
+
+# 运行脚本时可能生成的本地文件
+*.log
+.DS_Store
+
+# 环境变量文件
+.env
+
+# Node.js 依赖 (如果未来会用到的话)
+node_modules/
