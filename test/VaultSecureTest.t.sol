@@ -188,7 +188,7 @@ contract VaultSecureTest is Test {
 
     // ========= 5. Gas限制配置测试 =========
 
-    function test_GasLimitConfiguration() public {
+    function test_GasLimitConfiguration() public view {
         uint256 maxGas = vaultSecure.MAX_WITHDRAWAL_GAS();
         uint256 maxRetries = vaultSecure.MAX_RETRY_ATTEMPTS();
         uint256 maxContractSize = vaultSecure.MAX_CONTRACT_SIZE();
@@ -277,7 +277,7 @@ contract VaultSecureTest is Test {
 
     // ========= 9. 合约检测测试 =========
 
-    function test_ContractDetection() public {
+    function test_ContractDetection() public view {
         // 测试EOA地址检测
         assertEq(vaultSecure.isContract(USER_A), false, "USER_A should not be a contract");
 
@@ -288,7 +288,7 @@ contract VaultSecureTest is Test {
         );
     }
 
-    function test_ContractSizeDetection() public {
+    function test_ContractSizeDetection() public view {
         // 测试合约大小检测
         assertEq(
             vaultSecure.isContractTooLarge(address(maliciousContract)),

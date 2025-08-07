@@ -167,12 +167,12 @@ contract ReturnBombTest is Test {
 
     // ========= 3. 配置测试 =========
 
-    function test_ReturnDataSizeConfiguration() public {
+    function test_ReturnDataSizeConfiguration() public view {
         uint256 maxReturnSize = vaultSecure.MAX_RETURN_DATA_SIZE();
         assertEq(maxReturnSize, 256, "MAX_RETURN_DATA_SIZE should be 256 bytes");
     }
 
-    function test_ExcessivelySafeCall_Configuration() public {
+    function test_ExcessivelySafeCall_Configuration() public view {
         // 测试极度安全调用的配置
         uint256 maxGas = vaultSecure.MAX_WITHDRAWAL_GAS();
         uint256 maxReturnSize = vaultSecure.MAX_RETURN_DATA_SIZE();
@@ -263,7 +263,7 @@ contract ReturnBombTest is Test {
         assertEq(vaultSecure.balances(address(0), address(returnBombContract)), 1 ether, "Balance should remain unchanged");
     }
 
-    function test_ContractDetection_ReturnBomb() public {
+    function test_ContractDetection_ReturnBomb() public view {
         // 测试合约检测功能
         assertEq(
             vaultSecure.isContract(address(returnBombContract)),
