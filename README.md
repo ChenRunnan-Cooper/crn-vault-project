@@ -51,6 +51,12 @@ crn-vault-project/
   - ✅ Gas消耗漏洞防护
   - ✅ Return Bomb攻击防护
   - ✅ 合约检测和大小限制
+- **`contracts/production/USDValueVault.sol`** - 基于USD价值的金库合约
+  - ✅ 包含Vault所有安全防护机制
+  - ✅ 支持基于USD价值的存取款
+  - ✅ 价格预言机集成
+  - ✅ 价格波动下的资产计算
+  - ✅ 多资产组合管理
 
 #### 已弃用合约
 - **`contracts/deprecated/VaultVulnerable.sol`** - 原始版本，仅用于测试对比
@@ -65,6 +71,9 @@ crn-vault-project/
 - **`test/helpers/ReturnBombContract.sol`** - 用于测试Return Bomb攻击
 - **`test/helpers/MockERC20.sol`** - 标准ERC20代币模拟合约
 - **`test/helpers/MockNonStandardERC20.sol`** - 非标准ERC20代币模拟合约（如USDT）
+
+#### 预言机合约（仅用于测试）
+- **`contracts/production/SimplePriceOracle.sol`** - 简单价格预言机，用于测试USD价值计算
 
 ### 最佳实践
 
@@ -114,11 +123,37 @@ crn-vault-project/
 - `Withdrawal`: 记录取款事件（ETH或ERC20）
 - `WithdrawalFailed`: 记录取款失败事件
 
+### USDValueVault.sol - 基于USD价值的金库合约
+
+**主要功能：**
+- **双重记账** - 同时跟踪用户的代币数量和USD价值
+- **USD价值存款** (`deposit()`): 存入ETH并记录当时的USD价值
+- **USD价值取款** (`withdrawByUSDValue()`): 按USD价值提取ETH
+- **USD价值代币存款** (`depositToken()`): 存入ERC20代币并记录USD价值
+- **USD价值代币取款** (`withdrawTokenByUSDValue()`): 按USD价值提取代币
+- **当前市值查询** (`getCurrentUSDValue()`): 查询基于当前价格的USD价值
+
+**预言机集成：**
+- **价格获取** - 通过预言机获取资产实时价格
+- **精度处理** - 处理不同代币精度和价格精度
+- **价格波动适应** - 存取款金额根据价格变化自动调整
+
+**安全特性：**
+- ✅ **继承Vault安全机制**: 包含所有原始Vault的安全防护
+- ✅ **预言机故障处理**: 防止预言机返回无效价格
+- ✅ **舍入和精度处理**: 安全处理不同精度之间的转换
+- ✅ **兼容性设计**: 保持与原始功能的兼容
+
+**事件记录：**
+- `Deposit`: 记录存款事件（ETH或ERC20）及其USD价值
+- `Withdrawal`: 记录取款事件（ETH或ERC20）及其USD价值
+- `WithdrawalFailed`: 记录取款失败事件
+
 ## 测试覆盖情况
 
 ### 测试套件概览
 
-项目包含六个完整的测试套件，共 **68 个测试用例**，全部通过：
+项目包含七个完整的测试套件，共 **81 个测试用例**，全部通过：
 
 #### 1. Vault.t.sol - 基础功能测试 (5个测试)
 - ✅ `test_Deposit()` - 存款功能测试
@@ -220,10 +255,37 @@ crn-vault-project/
 - ✅ `test_EmergencyWithdrawToken_Success()` - ERC20紧急取款测试
 - ✅ `test_GetTokenBalance()` - 代币余额查询测试
 
+#### 7. USDValueVaultTest.t.sol - 基于USD价值的Vault测试 (13个测试)
+
+**基础功能测试 (2个):**
+- ✅ `test_DepositETH_USDValue()` - ETH存款USD价值计算测试
+- ✅ `test_WithdrawByUSDValue_ETH()` - 按USD价值取款测试
+
+**代币操作测试 (2个):**
+- ✅ `test_DepositToken_USDValue()` - 代币存款USD价值计算测试
+- ✅ `test_WithdrawTokenByUSDValue()` - 按USD价值取回代币测试
+
+**价格波动测试 (2个):**
+- ✅ `test_PriceFluctuation_ETH()` - 价格变化下的取款金额测试
+- ✅ `test_CurrentUSDValue_PriceChange()` - 价格变化下的当前价值计算测试
+
+**多资产管理测试 (1个):**
+- ✅ `test_MultiAssetDeposit_DifferentPrices()` - 多种资产组合管理测试
+
+**安全性测试 (4个):**
+- ✅ `test_RevertIf_WithdrawExceedsUSDBalance()` - USD价值超额取款测试
+- ✅ `test_RevertIf_PriceChange_InsufficientTokenBalance()` - 价格下跌导致余额不足测试
+- ✅ `test_PriceOracleFailure()` - 预言机价格错误测试
+- ✅ `test_PriceOracleUnavailable()` - 预言机价格不可用测试
+
+**用户隔离和兼容性测试 (2个):**
+- ✅ `test_UserIsolation()` - 多用户独立性测试
+- ✅ `test_OriginalFunctions_Compatibility()` - 原始功能兼容性测试
+
 ### 测试结果
 
 ```
-Ran 6 test suites in 147.66ms (36.83ms CPU time): 68 tests passed, 0 failed, 0 skipped (68 total tests)
+Ran 7 test suites in 168.16ms (8.98ms CPU time): 81 tests passed, 0 failed, 0 skipped (81 total tests)
 ```
 
 **测试覆盖范围：**
@@ -238,6 +300,9 @@ Ran 6 test suites in 147.66ms (36.83ms CPU time): 68 tests passed, 0 failed, 0 s
 - ✅ Return Bomb攻击防护测试
 - ✅ 非标准ERC20代币支持测试
 - ✅ 模糊测试
+- ✅ USD价值计算测试
+- ✅ 价格波动适应性测试
+- ✅ 预言机故障防护测试
 
 ## 技术栈
 

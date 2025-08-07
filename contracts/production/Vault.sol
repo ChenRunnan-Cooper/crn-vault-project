@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// 导入OpenZeppelin的SafeERC20库
+// 导入OpenZeppelin的SafeERC20库，一个能够处理非标准ERC20代币的库
 import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
@@ -11,7 +11,8 @@ import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
  * 增加了对ERC20代币的支持，包括非标准ERC20代币
  */
 contract Vault {
-    using SafeERC20 for IERC20;
+    // ERC是一个代币协议，定义了一个ERC20代币的标准，IERC20是ERC20代币的接口，早期的usdt并非完全的ERC标准，transfer不支持返回布尔值
+    using SafeERC20 for IERC20; // 使用SafeERC20库
 
     // 使用address(0)代表ETH
     address private constant ETH_SENTINEL = address(0);
@@ -40,7 +41,7 @@ contract Vault {
     function deposit() external payable {
         require(msg.value > 0, "Deposit amount must be greater than zero");
         balances[ETH_SENTINEL][msg.sender] += msg.value;
-        
+
         // 触发新旧两个事件以保持兼容性
         emit Deposit(ETH_SENTINEL, msg.sender, msg.value);
         emit DepositMade(msg.sender, msg.value);
@@ -61,7 +62,7 @@ contract Vault {
 
         // 使用SafeERC20安全转账，支持非标准ERC20
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        
+
         emit Deposit(_token, msg.sender, _amount);
     }
 
@@ -80,7 +81,7 @@ contract Vault {
         if (transferSuccess) {
             // 只有在转账成功后才更新状态
             balances[ETH_SENTINEL][msg.sender] = userBalance - _amount;
-            
+
             // 触发新事件
             emit Withdrawal(ETH_SENTINEL, msg.sender, _amount);
         }
@@ -94,13 +95,13 @@ contract Vault {
     function withdrawToken(address _token, uint256 _amount) external {
         require(_token != ETH_SENTINEL, "Use withdraw() for ETH");
         require(_amount > 0, "Withdraw amount must be greater than zero");
-        
+
         uint256 userBalance = balances[_token][msg.sender];
         require(userBalance >= _amount, "Insufficient balance");
 
         // 先更新状态，防止重入攻击
         balances[_token][msg.sender] = userBalance - _amount;
-        
+
         // 使用SafeERC20安全转账，支持非标准ERC20
         // 注意：SafeERC20已经处理了失败情况，会自动revert
         IERC20(_token).safeTransfer(msg.sender, _amount);
@@ -259,7 +260,7 @@ contract Vault {
 
         // 先更新状态，防止重入攻击
         balances[_token][msg.sender] = userBalance - _amount;
-        
+
         // 使用SafeERC20安全转账，支持非标准ERC20
         // 注意：SafeERC20已经处理了失败情况，会自动revert
         IERC20(_token).safeTransfer(msg.sender, _amount);
@@ -327,6 +328,4 @@ contract Vault {
     function getBalance(address _token, address _user) external view returns (uint256) {
         return balances[_token][_user];
     }
-    
-
 }
