@@ -18,12 +18,15 @@ crn-vault-project/
 ├── test/
 │   ├── helpers/            # 测试辅助合约
 │   │   ├── MaliciousContract.sol      # 恶意合约（用于测试）
-│   │   └── ReturnBombContract.sol     # Return Bomb攻击合约（用于测试）
+│   │   ├── ReturnBombContract.sol     # Return Bomb攻击合约（用于测试）
+│   │   ├── MockERC20.sol              # 标准ERC20代币模拟合约（用于测试）
+│   │   └── MockNonStandardERC20.sol   # 非标准ERC20代币模拟合约（用于测试）
 │   ├── Vault.t.sol         # 基础功能测试
 │   ├── ComprehensiveVault.t.sol  # 全面功能测试
 │   ├── DoubleSpendTest.t.sol      # 双花攻击防护测试
 │   ├── VaultSecureTest.t.sol      # Gas消耗漏洞防护测试
-│   └── ReturnBombTest.t.sol       # Return Bomb攻击防护测试
+│   ├── ReturnBombTest.t.sol       # Return Bomb攻击防护测试
+│   └── ERC20Vault.t.sol           # ERC20代币支持测试
 ├── .github/                 # GitHub工作流配置
 │   └── workflows/
 │       └── test.yml        # 自动化测试配置
@@ -34,6 +37,8 @@ crn-vault-project/
 ├── .gitmodules             # Git子模块配置
 ├── cache/                  # Foundry缓存目录
 ├── lib/                    # Foundry依赖库
+│   ├── forge-std/          # Forge标准库
+│   └── openzeppelin-contracts/  # OpenZeppelin合约库
 └── out/                    # 编译输出目录
 ```
 
@@ -58,6 +63,8 @@ crn-vault-project/
 #### 恶意合约（仅用于测试）
 - **`test/helpers/MaliciousContract.sol`** - 用于测试Gas消耗攻击
 - **`test/helpers/ReturnBombContract.sol`** - 用于测试Return Bomb攻击
+- **`test/helpers/MockERC20.sol`** - 标准ERC20代币模拟合约
+- **`test/helpers/MockNonStandardERC20.sol`** - 非标准ERC20代币模拟合约（如USDT）
 
 ### 最佳实践
 
@@ -111,7 +118,7 @@ crn-vault-project/
 
 ### 测试套件概览
 
-项目包含五个完整的测试套件，共 **56 个测试用例**，全部通过：
+项目包含六个完整的测试套件，共 **68 个测试用例**，全部通过：
 
 #### 1. Vault.t.sol - 基础功能测试 (5个测试)
 - ✅ `test_Deposit()` - 存款功能测试
@@ -216,7 +223,7 @@ crn-vault-project/
 ### 测试结果
 
 ```
-Ran 6 test suites in 150.62ms (36.65ms CPU time): 68 tests passed, 0 failed, 0 skipped (68 total tests)
+Ran 6 test suites in 147.66ms (36.83ms CPU time): 68 tests passed, 0 failed, 0 skipped (68 total tests)
 ```
 
 **测试覆盖范围：**
@@ -238,8 +245,10 @@ Ran 6 test suites in 150.62ms (36.65ms CPU time): 68 tests passed, 0 failed, 0 s
 - **智能合约语言**: Solidity ^0.8.20
 - **测试框架**: Forge (Foundry's testing framework)
 - **编译器**: Solc 0.8.30
+- **编译优化**: 启用优化器(optimizer=true)和IR(via_ir=true)
 - **Gas优化**: 内置gas限制和重试机制
 - **安全防护**: 多重安全机制防护各类攻击
+- **第三方库**: OpenZeppelin Contracts (SafeERC20)
 
 ## 快速开始
 
@@ -248,6 +257,7 @@ Ran 6 test suites in 150.62ms (36.65ms CPU time): 68 tests passed, 0 failed, 0 s
 - Rust (Foundry 依赖)
 - Foundry 工具链
 - Git
+- OpenZeppelin Contracts 库
 
 ### 安装 Foundry
 
@@ -261,6 +271,15 @@ foundryup
 ```bash
 git clone <repository-url>
 cd crn-vault-project
+```
+
+### 安装依赖
+
+```bash
+# 安装项目依赖
+forge install
+# 或者明确指定安装OpenZeppelin库
+forge install openzeppelin/openzeppelin-contracts
 ```
 
 ### 构建项目
@@ -300,6 +319,39 @@ forge snapshot
 ```bash
 forge fmt
 ```
+
+### 项目配置
+
+`foundry.toml` 文件包含以下关键配置：
+
+```toml
+[profile.default]
+src = "."                 # 源代码目录
+out = "out"               # 编译输出目录
+libs = ["lib"]            # 依赖库目录
+
+# 排除OpenZeppelin certora目录
+exclude = ["lib/openzeppelin-contracts/certora/**"]
+
+# 启用优化器和IR
+optimizer = true          # 启用Solidity优化器
+optimizer_runs = 200      # 优化器运行次数
+via_ir = true             # 启用IR编译模式，提高代码质量
+
+# 依赖库
+[profile.default.dependencies]
+forge-std = { git = "https://github.com/foundry-rs/forge-std", version = "1.9.5" }
+
+# 库映射
+remappings = [
+    "openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/"
+]
+```
+
+这些配置确保了：
+- 代码优化：通过优化器和IR提高合约效率
+- 依赖管理：正确引用forge-std和OpenZeppelin库
+- 路径映射：简化导入语句，使代码更清晰
 
 ### 本地开发网络
 
