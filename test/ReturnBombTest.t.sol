@@ -78,7 +78,7 @@ contract ReturnBombTest is Test {
         assertLt(gasUsed, 100000, "Gas consumption should be limited");
 
         // 验证余额没有减少（因为转账失败）
-        assertEq(vaultSecure.balances(address(returnBombContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(returnBombContract)), 1 ether, "Balance should remain unchanged");
     }
 
     function test_LargeReturnDataAttack_OriginalVault() public {
@@ -119,7 +119,7 @@ contract ReturnBombTest is Test {
         assertLt(gasUsed, 100000, "Gas consumption should be limited");
 
         // 验证余额没有减少（因为转账失败）
-        assertEq(vaultSecure.balances(address(largeReturnDataContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(largeReturnDataContract)), 1 ether, "Balance should remain unchanged");
     }
 
     // ========= 2. 正常合约测试 =========
@@ -162,7 +162,7 @@ contract ReturnBombTest is Test {
         assertLt(gasUsed, 100000, "Normal contract gas consumption should be low");
 
         // 验证余额没有减少（因为合约检测阻止了转账）
-        assertEq(vaultSecure.balances(address(normalContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(normalContract)), 1 ether, "Balance should remain unchanged");
     }
 
     // ========= 3. 配置测试 =========
@@ -260,7 +260,7 @@ contract ReturnBombTest is Test {
         vaultSecure.withdraw(0.1 ether);
 
         // 验证余额没有减少
-        assertEq(vaultSecure.balances(address(returnBombContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(returnBombContract)), 1 ether, "Balance should remain unchanged");
     }
 
     function test_ContractDetection_ReturnBomb() public {

@@ -90,6 +90,8 @@ crn-vault-project/
 - **存款功能** (`deposit()`): 用户可以向金库存入以太币
 - **取款功能** (`withdraw()`): 用户可以提取自己存入的资金
 - **余额查询** (`balances`): 查看用户在金库中的余额
+- **ERC20代币存款** (`depositToken()`): 用户可以向金库存入任意ERC20代币
+- **ERC20代币取款** (`withdrawToken()`): 用户可以提取自己存入的ERC20代币
 
 **安全特性：**
 - ✅ **Checks-Effects-Interactions 模式**: 防止重入攻击
@@ -98,10 +100,11 @@ crn-vault-project/
 - ✅ **余额检查**: 防止超额取款
 - ✅ **Gas消耗漏洞防护**: 合约检测和严格gas限制
 - ✅ **Return Bomb攻击防护**: 极度安全调用和返回数据限制
+- ✅ **非标准ERC20支持**: 使用SafeERC20库处理非标准代币
 
 **事件记录：**
-- `DepositMade`: 记录存款事件
-- `WithdrawalMade`: 记录取款事件
+- `Deposit`: 记录存款事件（ETH或ERC20）
+- `Withdrawal`: 记录取款事件（ETH或ERC20）
 - `WithdrawalFailed`: 记录取款失败事件
 
 ## 测试覆盖情况
@@ -188,10 +191,32 @@ crn-vault-project/
 - ✅ `test_ReturnDataSizeLimit()` - 返回数据大小限制测试
 - ✅ `test_ContractDetection_ReturnBomb()` - Return Bomb合约检测测试
 
+#### 6. ERC20Vault.t.sol - ERC20代币支持测试 (12个测试)
+
+**标准ERC20测试 (5个):**
+- ✅ `test_DepositStandardToken_Success()` - 标准ERC20存款测试
+- ✅ `test_WithdrawStandardToken_Success()` - 标准ERC20取款测试
+- ✅ `test_RevertIf_WithdrawStandardToken_InsufficientBalance()` - ERC20余额不足测试
+- ✅ `test_RevertIf_DepositStandardToken_WithoutApproval()` - 未授权存款测试
+- ✅ `test_RevertIf_DepositStandardToken_ZeroAmount()` - 零金额存款测试
+
+**非标准ERC20测试 (2个):**
+- ✅ `test_DepositNonStandardToken_Success()` - 非标准ERC20存款测试
+- ✅ `test_WithdrawNonStandardToken_Success()` - 非标准ERC20取款测试
+
+**多用户多代币测试 (2个):**
+- ✅ `test_MultiUserMultiToken_Isolation()` - 多用户多代币隔离测试
+- ✅ `test_RevertIf_OtherUserWithdraws()` - 其他用户提取代币测试
+
+**混合资产测试 (3个):**
+- ✅ `test_MixedETHAndERC20_Balances()` - ETH和ERC20混合余额测试
+- ✅ `test_EmergencyWithdrawToken_Success()` - ERC20紧急取款测试
+- ✅ `test_GetTokenBalance()` - 代币余额查询测试
+
 ### 测试结果
 
 ```
-Ran 5 test suites in 104.42ms (149.60ms CPU time): 56 tests passed, 0 failed, 0 skipped (56 total tests)
+Ran 6 test suites in 150.62ms (36.65ms CPU time): 68 tests passed, 0 failed, 0 skipped (68 total tests)
 ```
 
 **测试覆盖范围：**
@@ -204,6 +229,7 @@ Ran 5 test suites in 104.42ms (149.60ms CPU time): 56 tests passed, 0 failed, 0 
 - ✅ 双花攻击防护测试
 - ✅ Gas消耗漏洞防护测试
 - ✅ Return Bomb攻击防护测试
+- ✅ 非标准ERC20代币支持测试
 - ✅ 模糊测试
 
 ## 技术栈
@@ -408,9 +434,9 @@ cast call $CONTRACT_ADDRESS "MAX_RETURN_DATA_SIZE()"
 
 #### 6. Gas消耗漏洞防护 ✅
 - **防护机制**: 
-  - 合约检测和大小限制机制
-  - 严格gas限制（2300 gas）防止恶意合约
-  - 差异化处理合约地址和EOA地址
+   - 合约检测和大小限制机制
+   - 严格gas限制（2300 gas）防止恶意合约
+   - 差异化处理合约地址和EOA地址
   - 重试机制和状态保护
 - **测试验证**: 恶意合约无法通过消耗gas攻击
 - **性能对比**:
@@ -420,9 +446,9 @@ cast call $CONTRACT_ADDRESS "MAX_RETURN_DATA_SIZE()"
 
 #### 7. Return Bomb攻击防护 ✅
 - **防护机制**: 
-  - 极度安全调用函数（excessivelySafeCall）
-  - 返回数据大小限制（256字节）
-  - 防止恶意合约返回大量数据消耗gas
+   - 极度安全调用函数（excessivelySafeCall）
+   - 返回数据大小限制（256字节）
+   - 防止恶意合约返回大量数据消耗gas
 - **测试验证**: 恶意合约无法通过Return Bomb攻击
 - **性能对比**:
   - Return Bomb攻击：原始合约38,583 gas vs 安全合约16,960 gas（56.1%防护）
@@ -533,6 +559,37 @@ forge test --gas-limit 10000000
 1. **使用console.log调试**
 2. **查看详细的gas报告**
 3. **使用Foundry的调试工具**
+
+## 如何使用ERC20代币功能
+
+### 存入ERC20代币
+
+存入ERC20代币需要两个步骤：
+
+```bash
+# 1. 授权Vault合约操作您的代币
+cast send <token_address> "approve(address,uint256)" <vault_address> <amount> --private-key $PRIVATE_KEY
+
+# 2. 将代币存入Vault
+cast send <vault_address> "depositToken(address,uint256)" <token_address> <amount> --private-key $PRIVATE_KEY
+```
+
+### 提取ERC20代币
+
+```bash
+# 提取ERC20代币
+cast send <vault_address> "withdrawToken(address,uint256)" <token_address> <amount> --private-key $PRIVATE_KEY
+```
+
+### 查询ERC20代币余额
+
+```bash
+# 查询用户在Vault中的代币余额
+cast call <vault_address> "getBalance(address,address)" <token_address> <user_address>
+
+# 查询Vault合约持有的代币总量
+cast call <vault_address> "getTokenBalance(address)" <token_address>
+```
 
 ## 许可证
 

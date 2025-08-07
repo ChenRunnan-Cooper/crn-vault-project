@@ -1,12 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+// 导入OpenZeppelin的SafeERC20库
+import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 /**
  * @title Vault
  * @dev 改进的金库合约，增加了gas限制和重试机制来防止无限调用漏洞
+ * 增加了对ERC20代币的支持，包括非标准ERC20代币
  */
 contract Vault {
-    mapping(address => uint256) public balances;
+    using SafeERC20 for IERC20;
+
+    // 使用address(0)代表ETH
+    address private constant ETH_SENTINEL = address(0);
+
+    // 代币地址 => 用户地址 => 余额
+    mapping(address => mapping(address => uint256)) public balances;
 
     // 添加gas限制配置
     uint256 public constant MAX_WITHDRAWAL_GAS = 2300; // 基础转账gas，防止复杂操作
@@ -14,26 +25,53 @@ contract Vault {
     uint256 public constant MAX_CONTRACT_SIZE = 24576; // 合约代码大小限制（字节）
     uint256 public constant MAX_RETURN_DATA_SIZE = 256; // 返回数据大小限制（字节）
 
+    // 更新事件定义，增加token参数
+    event Deposit(address indexed token, address indexed account, uint256 amount);
+    event Withdrawal(address indexed token, address indexed account, uint256 amount);
+    event WithdrawalFailed(address indexed token, address indexed account, uint256 amount, string reason);
+
+    // 保留旧事件以兼容现有代码
     event DepositMade(address indexed account, uint256 amount);
     event WithdrawalMade(address indexed account, uint256 amount);
-    event WithdrawalFailed(address indexed account, uint256 amount, string reason);
 
     /**
-     * @dev 存钱函数。
+     * @dev 存入ETH函数
      */
     function deposit() external payable {
         require(msg.value > 0, "Deposit amount must be greater than zero");
-        balances[msg.sender] += msg.value;
+        balances[ETH_SENTINEL][msg.sender] += msg.value;
+        
+        // 触发新旧两个事件以保持兼容性
+        emit Deposit(ETH_SENTINEL, msg.sender, msg.value);
         emit DepositMade(msg.sender, msg.value);
     }
 
     /**
-     * @dev 安全的取钱函数，带有gas限制和重试机制
-     * @param _amount 要提取的金额。
+     * @dev 存入ERC20代币函数
+     * @param _token ERC20代币地址
+     * @param _amount 存款金额
+     * 注意：调用前需要先approve授权
+     */
+    function depositToken(address _token, uint256 _amount) external {
+        require(_token != ETH_SENTINEL, "Use deposit() for ETH");
+        require(_amount > 0, "Deposit amount must be greater than zero");
+
+        // 先更新状态，防止重入攻击
+        balances[_token][msg.sender] += _amount;
+
+        // 使用SafeERC20安全转账，支持非标准ERC20
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        
+        emit Deposit(_token, msg.sender, _amount);
+    }
+
+    /**
+     * @dev 取出ETH函数，带有gas限制和重试机制
+     * @param _amount 要提取的金额
      */
     function withdraw(uint256 _amount) external {
         require(_amount > 0, "Withdraw amount must be greater than zero");
-        uint256 userBalance = balances[msg.sender];
+        uint256 userBalance = balances[ETH_SENTINEL][msg.sender];
         require(userBalance >= _amount, "Insufficient balance");
 
         // 先尝试转账，成功后再更新状态
@@ -41,8 +79,32 @@ contract Vault {
 
         if (transferSuccess) {
             // 只有在转账成功后才更新状态
-            balances[msg.sender] = userBalance - _amount;
+            balances[ETH_SENTINEL][msg.sender] = userBalance - _amount;
+            
+            // 触发新事件
+            emit Withdrawal(ETH_SENTINEL, msg.sender, _amount);
         }
+    }
+
+    /**
+     * @dev 取出ERC20代币函数
+     * @param _token ERC20代币地址
+     * @param _amount 取款金额
+     */
+    function withdrawToken(address _token, uint256 _amount) external {
+        require(_token != ETH_SENTINEL, "Use withdraw() for ETH");
+        require(_amount > 0, "Withdraw amount must be greater than zero");
+        
+        uint256 userBalance = balances[_token][msg.sender];
+        require(userBalance >= _amount, "Insufficient balance");
+
+        // 先更新状态，防止重入攻击
+        balances[_token][msg.sender] = userBalance - _amount;
+        
+        // 使用SafeERC20安全转账，支持非标准ERC20
+        // 注意：SafeERC20已经处理了失败情况，会自动revert
+        IERC20(_token).safeTransfer(msg.sender, _amount);
+        emit Withdrawal(_token, msg.sender, _amount);
     }
 
     /**
@@ -110,7 +172,7 @@ contract Vault {
         if (_isContract(_to)) {
             // 检查合约代码大小
             if (_isContractTooLarge(_to)) {
-                emit WithdrawalFailed(_to, _amount, "Contract too large");
+                emit WithdrawalFailed(ETH_SENTINEL, _to, _amount, "Contract too large");
                 return false;
             }
 
@@ -120,7 +182,7 @@ contract Vault {
                 emit WithdrawalMade(_to, _amount);
                 return true;
             } else {
-                emit WithdrawalFailed(_to, _amount, "Contract transfer failed");
+                emit WithdrawalFailed(ETH_SENTINEL, _to, _amount, "Contract transfer failed");
                 return false;
             }
         } else {
@@ -132,7 +194,7 @@ contract Vault {
                 uint256 gasLeft = gasleft();
 
                 if (gasLeft < MAX_WITHDRAWAL_GAS) {
-                    emit WithdrawalFailed(_to, _amount, "Insufficient gas");
+                    emit WithdrawalFailed(ETH_SENTINEL, _to, _amount, "Insufficient gas");
                     return false;
                 }
 
@@ -158,7 +220,7 @@ contract Vault {
             }
 
             if (!success) {
-                emit WithdrawalFailed(_to, _amount, "Transfer failed after retries");
+                emit WithdrawalFailed(ETH_SENTINEL, _to, _amount, "Transfer failed after retries");
             }
 
             return false;
@@ -166,12 +228,12 @@ contract Vault {
     }
 
     /**
-     * @dev 紧急取款函数，用于处理转账失败的情况
+     * @dev 紧急取款函数，用于处理ETH转账失败的情况
      * @param _amount 要提取的金额
      */
     function emergencyWithdraw(uint256 _amount) external {
         require(_amount > 0, "Withdraw amount must be greater than zero");
-        uint256 userBalance = balances[msg.sender];
+        uint256 userBalance = balances[ETH_SENTINEL][msg.sender];
         require(userBalance >= _amount, "Insufficient balance");
 
         // 先尝试转账，成功后再更新状态
@@ -179,18 +241,39 @@ contract Vault {
 
         if (transferSuccess) {
             // 只有在转账成功后才更新状态
-            balances[msg.sender] = userBalance - _amount;
+            balances[ETH_SENTINEL][msg.sender] = userBalance - _amount;
+            emit Withdrawal(ETH_SENTINEL, msg.sender, _amount);
         }
     }
 
     /**
-     * @dev 强制取款函数，用于处理合约地址的取款
+     * @dev 紧急取款ERC20代币函数
+     * @param _token ERC20代币地址
+     * @param _amount 要提取的金额
+     */
+    function emergencyWithdrawToken(address _token, uint256 _amount) external {
+        require(_token != ETH_SENTINEL, "Use emergencyWithdraw() for ETH");
+        require(_amount > 0, "Withdraw amount must be greater than zero");
+        uint256 userBalance = balances[_token][msg.sender];
+        require(userBalance >= _amount, "Insufficient balance");
+
+        // 先更新状态，防止重入攻击
+        balances[_token][msg.sender] = userBalance - _amount;
+        
+        // 使用SafeERC20安全转账，支持非标准ERC20
+        // 注意：SafeERC20已经处理了失败情况，会自动revert
+        IERC20(_token).safeTransfer(msg.sender, _amount);
+        emit Withdrawal(_token, msg.sender, _amount);
+    }
+
+    /**
+     * @dev 强制取款函数，用于处理合约地址的ETH取款
      * 注意：此函数会直接转账，不进行复杂的检查
      * @param _amount 要提取的金额
      */
     function forceWithdraw(uint256 _amount) external {
         require(_amount > 0, "Withdraw amount must be greater than zero");
-        uint256 userBalance = balances[msg.sender];
+        uint256 userBalance = balances[ETH_SENTINEL][msg.sender];
         require(userBalance >= _amount, "Insufficient balance");
 
         // 先尝试转账，成功后再更新状态
@@ -198,7 +281,8 @@ contract Vault {
 
         if (transferSuccess) {
             // 只有在转账成功后才更新状态
-            balances[msg.sender] = userBalance - _amount;
+            balances[ETH_SENTINEL][msg.sender] = userBalance - _amount;
+            emit Withdrawal(ETH_SENTINEL, msg.sender, _amount);
         }
     }
 
@@ -221,9 +305,28 @@ contract Vault {
     }
 
     /**
-     * @dev 查询合约余额
+     * @dev 查询合约ETH余额
      */
     function getContractBalance() external view returns (uint256) {
         return address(this).balance;
     }
+
+    /**
+     * @dev 查询合约ERC20代币余额
+     * @param _token ERC20代币地址
+     */
+    function getTokenBalance(address _token) external view returns (uint256) {
+        return IERC20(_token).balanceOf(address(this));
+    }
+
+    /**
+     * @dev 查询用户余额（ETH或ERC20）
+     * @param _token 代币地址（address(0)表示ETH）
+     * @param _user 用户地址
+     */
+    function getBalance(address _token, address _user) external view returns (uint256) {
+        return balances[_token][_user];
+    }
+    
+
 }

@@ -34,7 +34,7 @@ contract VaultSecureTest is Test {
     function test_BasicDeposit() public {
         vm.prank(USER_A);
         vaultSecure.deposit{value: 1 ether}();
-        assertEq(vaultSecure.balances(USER_A), 1 ether, "User A balance should be 1 ether");
+        assertEq(vaultSecure.balances(address(0), USER_A), 1 ether, "User A balance should be 1 ether");
     }
 
     function test_BasicWithdraw() public {
@@ -45,7 +45,7 @@ contract VaultSecureTest is Test {
         vm.prank(USER_A);
         vaultSecure.withdraw(0.5 ether);
 
-        assertEq(vaultSecure.balances(USER_A), 0.5 ether, "User A vault balance should be 0.5 ether");
+        assertEq(vaultSecure.balances(address(0), USER_A), 0.5 ether, "User A vault balance should be 0.5 ether");
         assertEq(USER_A.balance, userBalanceBefore + 0.5 ether, "User A wallet balance should increase");
     }
 
@@ -101,7 +101,7 @@ contract VaultSecureTest is Test {
 
         // 验证恶意合约仍然有余额（因为转账失败）
         assertEq(
-            vaultSecure.balances(address(maliciousContract)), 1 ether, "Malicious contract should still have balance"
+            vaultSecure.balances(address(0), address(maliciousContract)), 1 ether, "Malicious contract should still have balance"
         );
     }
 
@@ -137,7 +137,7 @@ contract VaultSecureTest is Test {
         vaultSecure.withdraw(0.1 ether);
 
         // 由于合约检测，余额应该保持不变
-        assertEq(vaultSecure.balances(address(maliciousContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(maliciousContract)), 1 ether, "Balance should remain unchanged");
     }
 
     function test_MaxRetryAttempts() public {
@@ -153,7 +153,7 @@ contract VaultSecureTest is Test {
         vaultSecure.withdraw(0.1 ether);
 
         // 验证余额没有减少（因为所有重试都失败了）
-        assertEq(vaultSecure.balances(address(maliciousContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(maliciousContract)), 1 ether, "Balance should remain unchanged");
     }
 
     // ========= 4. 紧急取款测试 =========
@@ -166,7 +166,7 @@ contract VaultSecureTest is Test {
         vm.prank(USER_A);
         vaultSecure.emergencyWithdraw(0.5 ether);
 
-        assertEq(vaultSecure.balances(USER_A), 0.5 ether, "User A vault balance should be 0.5 ether");
+        assertEq(vaultSecure.balances(address(0), USER_A), 0.5 ether, "User A vault balance should be 0.5 ether");
         assertEq(USER_A.balance, userBalanceBefore + 0.5 ether, "User A wallet balance should increase");
     }
 
@@ -183,7 +183,7 @@ contract VaultSecureTest is Test {
         vaultSecure.emergencyWithdraw(0.1 ether);
 
         // 验证余额没有减少（因为转账失败）
-        assertEq(vaultSecure.balances(address(maliciousContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(maliciousContract)), 1 ether, "Balance should remain unchanged");
     }
 
     // ========= 5. Gas限制配置测试 =========
@@ -209,7 +209,7 @@ contract VaultSecureTest is Test {
 
         // 监听WithdrawalFailed事件 - 现在应该是合约转账失败
         vm.expectEmit(true, true, false, true);
-        emit Vault.WithdrawalFailed(address(maliciousContract), 0.1 ether, "Contract transfer failed");
+        emit Vault.WithdrawalFailed(address(0), address(maliciousContract), 0.1 ether, "Contract transfer failed");
 
         vm.prank(address(maliciousContract));
         vaultSecure.withdraw(0.1 ether);
@@ -317,7 +317,7 @@ contract VaultSecureTest is Test {
         vaultSecure.withdraw(0.1 ether);
 
         // 验证余额没有减少（因为转账失败）
-        assertEq(vaultSecure.balances(address(maliciousContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(maliciousContract)), 1 ether, "Balance should remain unchanged");
     }
 
     function test_ForceWithdraw_ForContracts() public {
@@ -333,7 +333,7 @@ contract VaultSecureTest is Test {
         vaultSecure.forceWithdraw(0.1 ether);
 
         // 验证余额没有减少（因为即使是简单操作也可能超过2300 gas限制）
-        assertEq(vaultSecure.balances(address(maliciousContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(maliciousContract)), 1 ether, "Balance should remain unchanged");
     }
 
     function test_EOA_Withdraw_ShouldSucceed() public {
@@ -346,7 +346,7 @@ contract VaultSecureTest is Test {
         vaultSecure.withdraw(0.5 ether);
 
         // 验证余额减少
-        assertEq(vaultSecure.balances(USER_A), 0.5 ether, "Balance should be reduced");
+        assertEq(vaultSecure.balances(address(0), USER_A), 0.5 ether, "Balance should be reduced");
     }
 
     function test_Contract_Withdraw_ShouldFail() public {
@@ -362,6 +362,6 @@ contract VaultSecureTest is Test {
         vaultSecure.withdraw(0.1 ether);
 
         // 验证余额没有减少
-        assertEq(vaultSecure.balances(address(maliciousContract)), 1 ether, "Balance should remain unchanged");
+        assertEq(vaultSecure.balances(address(0), address(maliciousContract)), 1 ether, "Balance should remain unchanged");
     }
 }
